@@ -14,7 +14,7 @@
 # limitations under the License.
 ##
 
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 import subprocess
 import sys
 
