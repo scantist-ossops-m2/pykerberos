@@ -28,7 +28,7 @@ Kerberos authentication based on <http://www.ietf.org/rfc/rfc4559.txt>.
 
 setup (
     name = "pykerberos",
-    version = "1.1.3",
+    version = "1.1.4",
     description = "High-level interface to Kerberos",
     long_description=long_description,
     license="ASL 2.0",

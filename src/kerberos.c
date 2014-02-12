@@ -570,9 +570,16 @@ static PyMethodDef KerberosMethods[] = {
         NULL,                /* m_clear */
         NULL,                /* m_free */
     };
+
 #endif
 
-PyMODINIT_FUNC initkerberos(void)
+
+
+#if PY_MAJOR_VERSION >= 3
+PyObject* PyInit_kerberos(void)
+#else
+void initkerberos(void)
+#endif
 {
     PyObject *m,*d;
 
