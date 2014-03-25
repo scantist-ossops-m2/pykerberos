@@ -26,6 +26,30 @@ Kerberos authentication based on <http://www.ietf.org/rfc/rfc4559.txt>.
 
 """
 
+# Backport from Python 2.7 in case we're in 2.6.
+def check_output(*popenargs, **kwargs):
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    output, unused_err = process.communicate()
+    retcode = process.poll()
+    if retcode:
+        cmd = kwargs.get("args")
+        if cmd is None:
+            cmd = popenargs[0]
+        raise subprocess.CalledProcessError(retcode, cmd, output=output)
+    return output
+
+
+extra_link_args = check_output(
+    ["krb5-config", "--libs", "gssapi"],
+    universal_newlines=True
+).split()
+
+extra_compile_args = check_output(
+    ["krb5-config", "--cflags", "gssapi"],
+    universal_newlines=True
+).split()
+
+
 setup (
     name = "pykerberos",
     version = "1.1.4",
@@ -42,8 +66,8 @@ setup (
     ext_modules = [
         Extension(
             "kerberos",
-            extra_link_args = subprocess.check_output(["krb5-config", "--libs", "gssapi"], universal_newlines=True).split(),
-            extra_compile_args = subprocess.check_output(["krb5-config", "--cflags", "gssapi"], universal_newlines=True).split(),
+            extra_link_args = extra_link_args,
+            extra_compile_args = extra_compile_args,
             sources = [
                 "src/kerberos.c",
                 "src/kerberosbasic.c",
