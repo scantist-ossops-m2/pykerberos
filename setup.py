@@ -52,7 +52,7 @@ extra_compile_args = check_output(
 
 setup (
     name = "pykerberos",
-    version = "1.1.4",
+    version = "1.1.5",
     description = "High-level interface to Kerberos",
     long_description=long_description,
     license="ASL 2.0",
