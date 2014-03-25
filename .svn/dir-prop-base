@@ -1,8 +1,0 @@
-K 10
-svn:ignore
-V 29
-build
-.project
-.pydevproject
-
-END
