@@ -256,6 +256,7 @@ int authenticate_gss_client_step(gss_client_state* state, const char* challenge)
     // Try to get the user name if we have completed all GSS operations
     if (ret == AUTH_GSS_COMPLETE)
     {
+        gss_buffer_desc name_token;
         gss_name_t gssuser = GSS_C_NO_NAME;
         maj_stat = gss_inquire_context(&min_stat, state->context, &gssuser, NULL, NULL, NULL,  NULL, NULL, NULL);
         if (GSS_ERROR(maj_stat))
@@ -265,7 +266,6 @@ int authenticate_gss_client_step(gss_client_state* state, const char* challenge)
             goto end;
         }
         
-        gss_buffer_desc name_token;
         name_token.length = 0;
         maj_stat = gss_display_name(&min_stat, gssuser, &name_token, NULL);
         if (GSS_ERROR(maj_stat))
@@ -433,6 +433,7 @@ int authenticate_gss_server_init(const char *service, gss_server_state *state)
 {
     OM_uint32 maj_stat;
     OM_uint32 min_stat;
+    size_t service_len;
     gss_buffer_desc name_token = GSS_C_EMPTY_BUFFER;
     int ret = AUTH_GSS_COMPLETE;
     
@@ -446,7 +447,7 @@ int authenticate_gss_server_init(const char *service, gss_server_state *state)
     state->response = NULL;
     
     // Server name may be empty which means we aren't going to create our own creds
-    size_t service_len = strlen(service);
+    service_len = strlen(service);
     if (service_len != 0)
     {
         // Import server name first
