@@ -114,6 +114,7 @@ int authenticate_gss_client_init(const char* service, const char* principal, lon
     gss_buffer_desc principal_token = GSS_C_EMPTY_BUFFER;
     int ret = AUTH_GSS_COMPLETE;
     
+    gss_OID mech;
     state->server_name = GSS_C_NO_NAME;
     state->context = GSS_C_NO_CONTEXT;
     state->gss_flags = gss_flags;
@@ -125,7 +126,13 @@ int authenticate_gss_client_init(const char* service, const char* principal, lon
     name_token.length = strlen(service);
     name_token.value = (char *)service;
     
-    maj_stat = gss_import_name(&min_stat, &name_token, gss_krb5_nt_service_name, &state->server_name);
+    // could be in principal name format, i.e. service/fqdn@REALM
+    if (strchr(service, '/'))
+        mech = GSS_C_NO_OID;
+    else
+        mech = gss_krb5_nt_service_name;
+
+    maj_stat = gss_import_name(&min_stat, &name_token, mech, &state->server_name);
     
     if (GSS_ERROR(maj_stat))
     {
@@ -202,6 +209,7 @@ int authenticate_gss_client_step(gss_client_state* state, const char* challenge)
 {
     OM_uint32 maj_stat;
     OM_uint32 min_stat;
+    OM_uint32 ret_flags; // Not used, but may be necessary for gss call.
     gss_buffer_desc input_token = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc output_token = GSS_C_EMPTY_BUFFER;
     int ret = AUTH_GSS_CONTINUE;
@@ -224,17 +232,17 @@ int authenticate_gss_client_step(gss_client_state* state, const char* challenge)
     // Do GSSAPI step
     Py_BEGIN_ALLOW_THREADS
     maj_stat = gss_init_sec_context(&min_stat,
-                                    state->client_creds,
+                                    NULL, //state->client_creds,
                                     &state->context,
                                     state->server_name,
                                     GSS_C_NO_OID,
                                     (OM_uint32)state->gss_flags,
                                     0,
-                                    GSS_C_NO_CHANNEL_BINDINGS,
+                                    NULL, //GSS_C_NO_CHANNEL_BINDINGS,
                                     &input_token,
                                     NULL,
                                     &output_token,
-                                    NULL,
+                                    &ret_flags,
                                     NULL);
     Py_END_ALLOW_THREADS
     
@@ -352,6 +360,175 @@ end:
 	return ret;
 }
 
+#ifdef GSSAPI_EXT
+int authenticate_gss_client_unwrap_iov(gss_client_state *state, const char *challenge)
+{
+        OM_uint32 maj_stat;
+        OM_uint32 min_stat;
+        int conf_state = 1;
+        OM_uint32 qop_state = 0;
+        int ret = AUTH_GSS_COMPLETE;
+        int iov_count = 3;
+        gss_iov_buffer_desc iov[iov_count];
+        unsigned char * data = NULL;
+        size_t len = 0;
+        unsigned int token_len = 0;
+
+        // Always clear out the old response
+        if (state->response != NULL)
+        {
+            free(state->response);
+            state->response = NULL;
+            state->responseConf = 0;
+        }
+
+        // If there is a challenge (data from the server) we need to give it to GSS
+        if (challenge && *challenge)
+        {
+            data = base64_decode(challenge, &len);
+        }
+
+        if (!data || len == 0)
+        {
+            // nothing to do, return
+            data = (unsigned char *)malloc(1);
+            data[0] = 0;
+            state->response = (char*)data;
+            return AUTH_GSS_COMPLETE;
+        }
+
+        memcpy(&token_len, data, sizeof(unsigned int));
+
+        if (len-4-token_len < 0)
+        {
+            PyErr_SetObject(KrbException_class, Py_BuildValue("((s:i))","Data length error in response", -1));
+            free(data);
+            return AUTH_GSS_ERROR;
+        }
+
+        iov[0].type = GSS_IOV_BUFFER_TYPE_HEADER;
+        iov[0].buffer.value = data+4;
+        iov[0].buffer.length = token_len;
+
+        iov[1].type = GSS_IOV_BUFFER_TYPE_DATA;
+        iov[1].buffer.value = data+4+token_len;
+		iov[1].buffer.length = len-4-token_len;
+
+        iov[2].type = GSS_IOV_BUFFER_TYPE_DATA;
+        iov[2].buffer.value = "";
+        iov[2].buffer.length = 0;
+
+        maj_stat = gss_unwrap_iov(&min_stat, state->context, &conf_state, &qop_state, iov, iov_count);
+
+        if (maj_stat != GSS_S_COMPLETE)
+        {
+            set_gss_error(maj_stat, min_stat);
+            ret = AUTH_GSS_ERROR;
+        }
+        else
+        {
+            ret = AUTH_GSS_COMPLETE;
+
+            // Grab the client response
+            state->responseConf = conf_state;
+            state->response = base64_encode((const unsigned char *)iov[1].buffer.value, iov[1].buffer.length);
+        }
+
+        free(data);
+        return ret;
+}
+
+int authenticate_gss_client_wrap_iov(gss_client_state* state, const char* challenge, int protect, int *pad_len)
+{
+    OM_uint32 maj_stat, min_stat;
+    int iov_count = 3;
+    gss_iov_buffer_desc iov[iov_count];
+    size_t len = 0;
+    int ret = AUTH_GSS_CONTINUE;
+    int conf_state;
+    unsigned char * data = (unsigned char*)"";
+
+    // Always clear out the old response
+    if (state->response != NULL)
+    {
+        free(state->response);
+        state->response = NULL;
+    }
+
+    if (challenge && *challenge)
+    {
+        data = base64_decode(challenge, &len);
+    }
+
+    iov[0].type = GSS_IOV_BUFFER_TYPE_HEADER | GSS_IOV_BUFFER_FLAG_ALLOCATE;
+    iov[1].type = GSS_IOV_BUFFER_TYPE_DATA;
+    iov[1].buffer.value = data;
+    iov[1].buffer.length = len;
+    iov[2].type = GSS_IOV_BUFFER_TYPE_PADDING | GSS_IOV_BUFFER_FLAG_ALLOCATE;
+
+    maj_stat = gss_wrap_iov(&min_stat,        /* minor_status */
+                         state->context,         /* context_handle */
+                         protect,       /* conf_req_flag */
+                         GSS_C_QOP_DEFAULT, /* qop_req */
+                         &conf_state,          /* conf_state */
+                         iov,           /* iov */
+                         iov_count);    /* iov_count */
+    if (maj_stat != GSS_S_COMPLETE)
+    {
+        set_gss_error(maj_stat, min_stat);
+        ret = AUTH_GSS_ERROR;
+    }
+    else
+    {
+        ret = AUTH_GSS_COMPLETE;
+
+        int index = 4;
+        OM_uint32 stoken_len= 0;
+        int bufsize = iov[0].buffer.length+
+                      iov[1].buffer.length+
+                      iov[2].buffer.length+
+                      sizeof(unsigned int);
+        char * response = (char*)malloc(bufsize);
+        memset(response,0,bufsize);
+        /******************************************************
+        Per Microsoft 2.2.9.1.2.2.2 for kerberos encrypted data
+        First section of data is a 32-bit unsigned int containing
+        the length of the Security Token followed by the encrypted message.
+        Encrypted data = |32-bit unsigned int|Message|
+        The message must start with the security token, followed by
+        the actual encrypted message.
+        Message = |Security Token|encrypted data|padding
+        iov[0] = security token
+        iov[1] = encrypted message
+        iov[2] = padding
+        ******************************************************/
+        /* Security Token length */
+        stoken_len = iov[0].buffer.length;
+        memcpy(response, &stoken_len, sizeof(unsigned int));
+        /* Security Token */
+        memcpy(response+index, iov[0].buffer.value, iov[0].buffer.length);
+        index += iov[0].buffer.length;
+        /* Message */
+        memcpy(response+index, iov[1].buffer.value, iov[1].buffer.length);
+        index += iov[1].buffer.length;
+        /* Padding */
+        *pad_len = iov[2].buffer.length;
+        if (*pad_len > 0)
+        {
+            memcpy(response+index, iov[2].buffer.value, iov[2].buffer.length);
+            index += iov[2].buffer.length;
+        }
+        /* encode to python returnable string */
+        state->responseConf = conf_state;
+        state->response = base64_encode((const unsigned char *)response,index);
+        free(response);
+    }
+    (void)gss_release_iov_buffer(&min_stat, iov, iov_count);
+    free(data);
+    return ret;
+}
+#endif
+
 int authenticate_gss_client_wrap(gss_client_state* state, const char* challenge, const char* user, int protect)
 {
 	OM_uint32 maj_stat;
@@ -426,6 +603,10 @@ int authenticate_gss_client_wrap(gss_client_state* state, const char* challenge,
 end:
 	if (output_token.value)
 		gss_release_buffer(&min_stat, &output_token);
+
+    if (input_token.value)
+        gss_release_buffer(&min_stat, &input_token);
+
 	return ret;
 }
 

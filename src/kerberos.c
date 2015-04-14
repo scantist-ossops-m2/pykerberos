@@ -304,6 +304,42 @@ static PyObject *authGSSClientUnwrap(PyObject *self, PyObject *args)
 	return Py_BuildValue("i", result);
 }
 
+#ifdef GSSAPI_EXT
+static PyObject *authGSSClientUnwrapIov(PyObject *self, PyObject *args)
+{
+	gss_client_state *state;
+	PyObject *pystate;
+	char *challenge = NULL;
+	int result = 0;
+
+	if (!PyArg_ParseTuple(args, "Os", &pystate, &challenge))
+		return NULL;
+
+#if PY_MAJOR_VERSION >= 3
+    if (!PyCapsule_CheckExact(pystate)) {
+#else
+    if (!PyCObject_Check(pystate)) {
+#endif
+		PyErr_SetString(PyExc_TypeError, "Expected a context object");
+		return NULL;
+	}
+
+#if PY_MAJOR_VERSION >= 3
+    state = PyCapsule_GetPointer(pystate, NULL);
+#else
+    state = (gss_client_state *)PyCObject_AsVoidPtr(pystate);
+#endif
+	if (state == NULL)
+		return NULL;
+
+	result = authenticate_gss_client_unwrap_iov(state, challenge);
+	if (result == AUTH_GSS_ERROR)
+		return NULL;
+
+	return Py_BuildValue("i", result);
+}
+#endif
+
 static PyObject *authGSSClientWrap(PyObject *self, PyObject *args)
 {
 	gss_client_state *state;
@@ -339,6 +375,44 @@ static PyObject *authGSSClientWrap(PyObject *self, PyObject *args)
 
 	return Py_BuildValue("i", result);
 }
+
+#ifdef GSSAPI_EXT
+static PyObject *authGSSClientWrapIov(PyObject *self, PyObject *args)
+{
+        gss_client_state *state;
+        PyObject *pystate;
+        char *challenge = NULL;
+        int protect = 1;
+        int result = 0;
+        int pad_len = 0;
+
+        if (!PyArg_ParseTuple(args, "Os|i", &pystate, &challenge, &protect))
+            return NULL;
+
+#if PY_MAJOR_VERSION >= 3
+    if (!PyCapsule_CheckExact(pystate)) {
+#else
+    if (!PyCObject_Check(pystate)) {
+#endif
+            PyErr_SetString(PyExc_TypeError, "Expected a context object");
+            return NULL;
+        }
+
+#if PY_MAJOR_VERSION >= 3
+    state = PyCapsule_GetPointer(pystate, NULL);
+#else
+    state = (gss_client_state *)PyCObject_AsVoidPtr(pystate);
+#endif
+        if (state == NULL)
+            return NULL;
+
+        result = authenticate_gss_client_wrap_iov(state, challenge, protect, &pad_len);
+        if (result == AUTH_GSS_ERROR)
+            return NULL;
+
+        return Py_BuildValue("ii", result, pad_len);
+}
+#endif
 
 static PyObject *authGSSServerInit(PyObject *self, PyObject *args)
 {
@@ -545,6 +619,12 @@ static PyMethodDef KerberosMethods[] = {
      "Do a GSSAPI wrap."},
     {"authGSSClientUnwrap",  authGSSClientUnwrap, METH_VARARGS,
      "Do a GSSAPI unwrap."},
+#ifdef GSSAPI_EXT
+    {"authGSSClientWrapIov",  authGSSClientWrapIov, METH_VARARGS,
+     "Do a GSSAPI iov wrap."},
+    {"authGSSClientUnwrapIov",  authGSSClientUnwrapIov, METH_VARARGS,
+     "Do a GSSAPI iov unwrap."},
+#endif
     {"authGSSServerClean",  authGSSServerClean, METH_VARARGS,
      "Terminate server-side GSSAPI operations."},
     {"authGSSServerStep",  authGSSServerStep, METH_VARARGS,

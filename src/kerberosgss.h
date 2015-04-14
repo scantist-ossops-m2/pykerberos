@@ -17,7 +17,9 @@
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_generic.h>
 #include <gssapi/gssapi_krb5.h>
-
+#ifdef GSSAPI_EXT
+  #include <gssapi/gssapi_ext.h>
+#endif
 #define krb5_get_err_text(context,code) error_message(code)
 
 #define AUTH_GSS_ERROR      -1
@@ -56,7 +58,10 @@ int authenticate_gss_client_clean(gss_client_state *state);
 int authenticate_gss_client_step(gss_client_state *state, const char *challenge);
 int authenticate_gss_client_unwrap(gss_client_state* state, const char* challenge);
 int authenticate_gss_client_wrap(gss_client_state* state, const char* challenge, const char* user, int protect);
-
+#ifdef GSSAPI_EXT
+  int authenticate_gss_client_wrap_iov(gss_client_state* state, const char* challenge, int protect, int *pad_len);
+  int authenticate_gss_client_unwrap_iov(gss_client_state* state, const char* challenge);
+#endif
 int authenticate_gss_server_init(const char* service, gss_server_state* state);
 int authenticate_gss_server_clean(gss_server_state *state);
 int authenticate_gss_server_step(gss_server_state *state, const char *challenge);

@@ -38,6 +38,11 @@ def check_output(*popenargs, **kwargs):
         raise subprocess.CalledProcessError(retcode, cmd, output=output)
     return output
 
+def check_krb5_version():
+    krb5_vers = check_output(["krb5-config", "--version"], universal_newlines=True).split()
+    if len(krb5_vers) == 4:
+        if int(krb5_vers[3].split('.')[1]) >= 10:
+            return r'-DGSSAPI_EXT'
 
 extra_link_args = check_output(
     ["krb5-config", "--libs", "gssapi"],
@@ -49,10 +54,13 @@ extra_compile_args = check_output(
     universal_newlines=True
 ).split()
 
+krb5_ver = check_krb5_version()
+if krb5_ver:
+    extra_compile_args.append(krb5_ver)
 
 setup (
     name = "pykerberos",
-    version = "1.1.5",
+    version = "1.1.6",
     description = "High-level interface to Kerberos",
     long_description=long_description,
     license="ASL 2.0",
