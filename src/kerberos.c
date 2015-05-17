@@ -35,12 +35,13 @@ static PyObject *checkPassword(PyObject *self, PyObject *args)
     const char *pswd = NULL;
     const char *service = NULL;
     const char *default_realm = NULL;
+    const int verify = 1;
     int result = 0;
 
-    if (!PyArg_ParseTuple(args, "ssss", &user, &pswd, &service, &default_realm))
+    if (!PyArg_ParseTuple(args, "ssssb", &user, &pswd, &service, &default_realm, &verify))
         return NULL;
 
-    result = authenticate_user_krb5pwd(user, pswd, service, default_realm);
+    result = authenticate_user_krb5pwd(user, pswd, service, default_realm, verify);
 
     if (result)
         return Py_INCREF(Py_True), Py_True;
@@ -542,10 +543,10 @@ static PyObject *authGSSServerUserName(PyObject *self, PyObject *args)
 {
     gss_server_state *state;
     PyObject *pystate;
-    
+
     if (!PyArg_ParseTuple(args, "O", &pystate))
         return NULL;
-    
+
 #if PY_MAJOR_VERSION >= 3
     if (!PyCapsule_CheckExact(pystate)) {
 #else
@@ -554,7 +555,7 @@ static PyObject *authGSSServerUserName(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_TypeError, "Expected a context object");
         return NULL;
     }
-    
+
 #if PY_MAJOR_VERSION >= 3
     state = PyCapsule_GetPointer(pystate, NULL);
 #else
@@ -562,7 +563,7 @@ static PyObject *authGSSServerUserName(PyObject *self, PyObject *args)
 #endif
     if (state == NULL)
         return NULL;
-    
+
     return Py_BuildValue("s", state->username);
 }
 
@@ -570,10 +571,10 @@ static PyObject *authGSSServerTargetName(PyObject *self, PyObject *args)
 {
     gss_server_state *state;
     PyObject *pystate;
-    
+
     if (!PyArg_ParseTuple(args, "O", &pystate))
         return NULL;
-    
+
 #if PY_MAJOR_VERSION >= 3
     if (!PyCapsule_CheckExact(pystate)) {
 #else
@@ -582,7 +583,7 @@ static PyObject *authGSSServerTargetName(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_TypeError, "Expected a context object");
         return NULL;
     }
-    
+
 #if PY_MAJOR_VERSION >= 3
     state = PyCapsule_GetPointer(pystate, NULL);
 #else
@@ -590,7 +591,7 @@ static PyObject *authGSSServerTargetName(PyObject *self, PyObject *args)
 #endif
     if (state == NULL)
         return NULL;
-    
+
     return Py_BuildValue("s", state->targetname);
 }
 
