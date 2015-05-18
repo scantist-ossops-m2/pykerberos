@@ -1,10 +1,16 @@
-kerberos (1.1.2+DSE1-1) unstable; urgency=low
+pykerberos (1.1.6-1) unstable; urgency=low
+
+  * Add KDC verification support
+
+ -- Stefan Richter <stefan@02strich.de>  Sun, 17 May 2015 17:04:02 -0700
+
+pykerberos (1.1.2+DSE1-1) unstable; urgency=low
 
   * Fix SASL QOP negotiation (katriana@datastax.com)
 
  -- Ben Gamble <bgamble@datastax.com>  Thu, 31 Jan 2013 11:26:46 +0000
 
-kerberos (1.1.1-1) unstable; urgency=low
+pykerberos (1.1.1-1) unstable; urgency=low
 
   * source package automatically created by stdeb 0.6.0+git
 
