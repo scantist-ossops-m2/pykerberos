@@ -26,33 +26,29 @@ Kerberos authentication based on <http://www.ietf.org/rfc/rfc4559.txt>.
 
 """
 
-# Backport from Python 2.7 in case we're in 2.6.
-def check_output(*popenargs, **kwargs):
-    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
-    output, unused_err = process.communicate()
-    retcode = process.poll()
-    if retcode:
-        cmd = kwargs.get("args")
-        if cmd is None:
-            cmd = popenargs[0]
-        raise subprocess.CalledProcessError(retcode, cmd, output=output)
-    return output
+def check_krb5_config(*options):
+    try:
+        process = subprocess.Popen(("krb5-config",) + options, stdout=subprocess.PIPE, universal_newlines=True)
+        output, unused_err = process.communicate()
+        retcode = process.poll()
+        if retcode:
+            cmd = kwargs.get("args")
+            if cmd is None:
+                cmd = popenargs[0]
+            raise subprocess.CalledProcessError(retcode, cmd, output=output)
+        return output.split()
+    except OSError as e:
+        if e.errno == 2:
+            raise Exception("You are missing krb5-config")
 
 def check_krb5_version():
-    krb5_vers = check_output(["krb5-config", "--version"], universal_newlines=True).split()
+    krb5_vers = check_krb5_config("--version")
     if len(krb5_vers) == 4:
         if int(krb5_vers[3].split('.')[1]) >= 10:
             return r'-DGSSAPI_EXT'
 
-extra_link_args = check_output(
-    ["krb5-config", "--libs", "gssapi"],
-    universal_newlines=True
-).split()
-
-extra_compile_args = check_output(
-    ["krb5-config", "--cflags", "gssapi"],
-    universal_newlines=True
-).split()
+extra_link_args = check_krb5_config("--libs", "gssapi")
+extra_compile_args = check_krb5_config("--cflags", "gssapi")
 
 krb5_ver = check_krb5_version()
 if krb5_ver:
