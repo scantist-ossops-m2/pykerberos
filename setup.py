@@ -44,7 +44,7 @@ def check_krb5_config(*options):
 def check_krb5_version():
     krb5_vers = check_krb5_config("--version")
     if len(krb5_vers) == 4:
-        if int(krb5_vers[3].split('.')[1]) >= 10:
+        if int(krb5_vers[3].split('.')[1].split('-')[0]) >= 10:
             return r'-DGSSAPI_EXT'
 
 extra_link_args = check_krb5_config("--libs", "gssapi")
