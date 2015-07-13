@@ -27,7 +27,7 @@ def main():
     parser = argparse.ArgumentParser(description='Verify Kerberos login.')
     parser.add_argument('--service', default='', help='the service to authenticate as')
     parser.add_argument('--default_realm', default='', help='the realm to use if none is provided in the username')
-    parser.add_argument('--verify', default=False, action='store_true', help='the realm to use if none is provided in the username')
+    parser.add_argument('--verify', default=False, action='store_true', help='enable KDC verification support')
     parser.add_argument('user', metavar='user', help='the username to verify')
     args = parser.parse_args()
 

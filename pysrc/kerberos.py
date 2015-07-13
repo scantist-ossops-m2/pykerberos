@@ -49,6 +49,8 @@ def checkPassword(user, pswd, service, default_realm, verify=True):
     @param default_realm: a string containing the default realm to use if one is not
         supplied in the user argument. Note that Kerberos realms are normally all
         uppercase (e.g., 'EXAMPLE.COM').
+    @param verify: a boolean flagging KDC verification as enabled or disabled
+        (default: True, i.e. enabled).
     @return:              True if authentication succeeds, False otherwise.
     """
 
