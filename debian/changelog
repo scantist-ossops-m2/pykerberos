@@ -1,3 +1,10 @@
+pykerberos (1.1.8-1) unstable; urgency=low
+
+  * Fixing kerberos version number parsing
+
+ -- Stefan Richter <stefan@02strich.de>  Sun, 23 Aug 2015 17:04:02 -0700
+
+
 pykerberos (1.1.6-1) unstable; urgency=low
 
   * Add KDC verification support

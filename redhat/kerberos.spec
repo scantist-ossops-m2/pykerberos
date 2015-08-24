@@ -1,6 +1,6 @@
 %define modname kerberos
-%define version 1.1.2+DSE1
-%define unmangled_version 1.1.2+DSE1
+%define version 1.1.8
+%define unmangled_version 1.1.8
 %define release 1
 %{!?python: %define python python26}
 
