@@ -42,7 +42,7 @@ For the gssapi and server tests you will need to kinit a principal on the server
 """
 
 def main():
-    
+
     # Extract arguments
     user = ""
     pswd = ""
@@ -52,7 +52,7 @@ def main():
     port = 8008
     use_ssl = False
     allowedActions = ("service", "basic", "gssapi", "server",)
-    
+
     options, args = getopt.getopt(sys.argv[1:], "u:p:s:h:i:r:x")
 
     for option, value in options:
@@ -70,7 +70,7 @@ def main():
             realm = value
         elif option == "-x":
             use_ssl = True
-    
+
     actions = set()
     for arg in args:
         if arg in allowedActions:
@@ -78,7 +78,7 @@ def main():
         else:
             print "Action not allowed: %s" % (arg,)
             sys.exit(1)
-    
+
     # Get service principal
     if "service" in actions:
         print "\n*** Running Service Principal test"
@@ -133,22 +133,22 @@ def testGSSAPI(service):
     print "Status for authGSSClientInit = %s" % statusText(rc);
     if rc != 1:
         return
-    
+
     rs, vs = kerberos.authGSSServerInit(service);
     print "Status for authGSSServerInit = %s" % statusText(rs);
     if rs != 1:
         return
-    
+
     rc = kerberos.authGSSClientStep(vc, "");
     print "Status for authGSSClientStep = %s" % statusText(rc);
     if rc != 0:
         return
-    
+
     rs = kerberos.authGSSServerStep(vs, kerberos.authGSSClientResponse(vc));
     print "Status for authGSSServerStep = %s" % statusText(rs);
     if rs == -1:
         return
-    
+
     rc = kerberos.authGSSClientStep(vc, kerberos.authGSSServerResponse(vs));
     print "Status for authGSSClientStep = %s" % statusText(rc);
     if rc == -1:
@@ -157,10 +157,10 @@ def testGSSAPI(service):
     print "Server user name: %s" % kerberos.authGSSServerUserName(vs);
     print "Server target name: %s" % kerberos.authGSSServerTargetName(vs);
     print "Client user name: %s" % kerberos.authGSSClientUserName(vc);
-    
+
     rc = kerberos.authGSSClientClean(vc);
     print "Status for authGSSClientClean = %s" % statusText(rc);
-    
+
     rs = kerberos.authGSSServerClean(vs);
     print "Status for authGSSServerClean = %s" % statusText(rs);
 
@@ -186,21 +186,21 @@ def testHTTP(host, port, use_ssl, service):
             response = http.getresponse()
         finally:
             http.close()
-        
+
         return response
 
     # Initial request without auth header
     uri = "/principals/"
     response = sendRequest(host, port, use_ssl, "OPTIONS", uri, {})
-    
+
     if response is None:
         print "Initial HTTP request to server failed"
         return
-    
+
     if response.status != 401:
         print "Initial HTTP request did not result in a 401 response"
         return
-    
+
     hdrs = response.msg.getheaders("www-authenticate")
     if (hdrs is None) or (len(hdrs) == 0):
         print "No www-authenticate header in initial HTTP response."
@@ -213,7 +213,7 @@ def testHTTP(host, port, use_ssl, service):
             break
     else:
         print "No www-authenticate header with negotiate in initial HTTP response."
-        return        
+        return
 
     try:
         rc, vc = kerberos.authGSSClientInit(service=service);
@@ -228,19 +228,19 @@ def testHTTP(host, port, use_ssl, service):
         return
 
     hdrs = {}
-    hdrs["Authorization"] = "negotiate %s" % kerberos.authGSSClientResponse(vc)    
+    hdrs["Authorization"] = "negotiate %s" % kerberos.authGSSClientResponse(vc)
 
     # Second request with auth header
     response = sendRequest(host, port, use_ssl, "OPTIONS", uri, hdrs)
-    
+
     if response is None:
         print "Second HTTP request to server failed"
         return
-    
+
     if response.status/100 != 2:
         print "Second HTTP request did not result in a 2xx response: %d" % (response.status,)
         return
-    
+
     hdrs = response.msg.getheaders("www-authenticate")
     if (hdrs is None) or (len(hdrs) == 0):
         print "No www-authenticate header in second HTTP response."
@@ -254,14 +254,14 @@ def testHTTP(host, port, use_ssl, service):
             break
     else:
         print "No www-authenticate header with negotiate in second HTTP response."
-        return        
+        return
 
     try:
         kerberos.authGSSClientStep(vc, splits[1])
     except kerberos.GSSError, e:
         print "Could not verify server www-authenticate header in second HTTP response: %s/%s" % (e[0][0], e[1][0])
         return
-    
+
     try:
         rc = kerberos.authGSSClientClean(vc);
     except kerberos.GSSError, e:
