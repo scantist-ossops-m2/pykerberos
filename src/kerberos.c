@@ -23,12 +23,12 @@
 #if PY_MAJOR_VERSION >= 3
     #define PyInt_FromLong PyLong_FromLong
 
-    #define PyNew(object) PyCapsule_New(object, NULL, NULL)
+    #define PyNew(object, destr) PyCapsule_New(object, NULL, destr)
     #define PyCheck(object) PyCapsule_CheckExact(object)
     #define PyGet(object, type) PyCapsule_GetPointer(object, NULL)
     #define PyClear(object) PyCapsule_SetPointer(object, NULL)
 #else
-    #define PyNew(object) PyCObject_FromVoidPtr(object, NULL)
+    #define PyNew(object, destr) PyCObject_FromVoidPtr(object, destr)
     #define PyCheck(object) PyCObject_Check(object)
     #define PyGet(object, type) (type *)PyCObject_AsVoidPtr(object)
     #define PyClear(object) PyCObject_SetVoidPtr(object, NULL)
@@ -99,6 +99,22 @@ static PyObject *getServerPrincipalDetails(PyObject *self, PyObject *args) {
     }
 }
 
+#if PY_MAJOR_VERSION >= 3
+void destruct_client(PyObject* o) {
+    gss_client_state *state;
+    state = PyCapsule_GetPointer(o, NULL);
+#else
+void destruct_client(void* o) {
+    gss_client_state *state;
+    state = (gss_client_state *)o;
+#endif
+
+    if (state != NULL) {
+        authenticate_gss_client_clean(state);
+        free(state);
+    }
+}
+
 static PyObject* authGSSClientInit(PyObject* self, PyObject* args, PyObject* keywds) {
     const char *service = NULL;
     const char *principal = NULL;
@@ -113,7 +129,7 @@ static PyObject* authGSSClientInit(PyObject* self, PyObject* args, PyObject* key
     }
 
     state = (gss_client_state *) malloc(sizeof(gss_client_state));
-    pystate = PyNew(state);
+    pystate = PyNew(state, &destruct_client);
 
     result = authenticate_gss_client_init(service, principal, gss_flags, state);
     if (result == AUTH_GSS_ERROR) {
@@ -124,28 +140,10 @@ static PyObject* authGSSClientInit(PyObject* self, PyObject* args, PyObject* key
 }
 
 static PyObject *authGSSClientClean(PyObject *self, PyObject *args) {
-    gss_client_state *state;
-    PyObject *pystate;
-    int result = 0;
-
-    if (!PyArg_ParseTuple(args, "O", &pystate)) {
-        return NULL;
-    }
-
-    if (!PyCheck(pystate)) {
-        PyErr_SetString(PyExc_TypeError, "Expected a context object");
-        return NULL;
-    }
-
-    state = PyGet(pystate, gss_client_state);
-    if (state != NULL) {
-        result = authenticate_gss_client_clean(state);
-
-        free(state);
-        PyClear(pystate);
-    }
-
-    return Py_BuildValue("i", result);
+#if PY_MAJOR_VERSION >= 3
+      PyErr_WarnEx(PyExc_RuntimeError, "kerberos.authGSSClientClean is deprecated.", 2);
+      return Py_BuildValue("i", AUTH_GSS_COMPLETE);
+#endif
 }
 
 static PyObject *authGSSClientStep(PyObject *self, PyObject *args) {
@@ -359,6 +357,22 @@ static PyObject *authGSSClientWrapIov(PyObject *self, PyObject *args) {
 }
 #endif
 
+#if PY_MAJOR_VERSION >= 3
+void destruct_server(PyObject* o) {
+    gss_server_state *state;
+    state = PyCapsule_GetPointer(o, NULL);
+#else
+void destruct_server(void* o) {
+    gss_server_state *state;
+    state = (gss_server_state *)o;
+#endif
+
+    if (state != NULL) {
+        authenticate_gss_server_clean(state);
+        free(state);
+    }
+}
+
 static PyObject *authGSSServerInit(PyObject *self, PyObject *args) {
     const char *service = NULL;
     gss_server_state *state;
@@ -370,7 +384,7 @@ static PyObject *authGSSServerInit(PyObject *self, PyObject *args) {
     }
 
     state = (gss_server_state *) malloc(sizeof(gss_server_state));
-    pystate = PyNew(state);
+    pystate = PyNew(state, &destruct_server);
 
     result = authenticate_gss_server_init(service, state);
     if (result == AUTH_GSS_ERROR) {
@@ -381,28 +395,9 @@ static PyObject *authGSSServerInit(PyObject *self, PyObject *args) {
 }
 
 static PyObject *authGSSServerClean(PyObject *self, PyObject *args) {
-    gss_server_state *state;
-    PyObject *pystate;
-    int result = 0;
-
-    if (!PyArg_ParseTuple(args, "O", &pystate)) {
-        return NULL;
-    }
-
-    if (!PyCheck(pystate)) {
-        PyErr_SetString(PyExc_TypeError, "Expected a context object");
-        return NULL;
-    }
-
-    state = PyGet(pystate, gss_server_state);
-    if (state != NULL) {
-        result = authenticate_gss_server_clean(state);
-
-        free(state);
-        PyClear(pystate);
-    }
-
-    return Py_BuildValue("i", result);
+#if PY_MAJOR_VERSION >= 3
+    PyErr_WarnEx(PyExc_RuntimeError, "kerberos.authGSSServerClean is deprecated.", 2);
+    return Py_BuildValue("i", AUTH_GSS_COMPLETE);
 }
 
 static PyObject *authGSSServerStep(PyObject *self, PyObject *args) {
