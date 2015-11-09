@@ -460,7 +460,7 @@ static PyObject *authGSSServerClean(PyObject *self, PyObject *args)
 #if PY_MAJOR_VERSION >= 3
     state = PyCapsule_GetPointer(pystate, NULL);
 #else
-    state = (gss_client_state *)PyCObject_AsVoidPtr(pystate);
+    state = (gss_server_state *)PyCObject_AsVoidPtr(pystate);
 #endif
     if (state != NULL)
     {
@@ -499,7 +499,7 @@ static PyObject *authGSSServerStep(PyObject *self, PyObject *args)
 #if PY_MAJOR_VERSION >= 3
     state = PyCapsule_GetPointer(pystate, NULL);
 #else
-    state = (gss_client_state *)PyCObject_AsVoidPtr(pystate);
+    state = (gss_server_state *)PyCObject_AsVoidPtr(pystate);
 #endif
     if (state == NULL)
         return NULL;
@@ -531,7 +531,7 @@ static PyObject *authGSSServerResponse(PyObject *self, PyObject *args)
 #if PY_MAJOR_VERSION >= 3
     state = PyCapsule_GetPointer(pystate, NULL);
 #else
-    state = (gss_client_state *)PyCObject_AsVoidPtr(pystate);
+    state = (gss_server_state *)PyCObject_AsVoidPtr(pystate);
 #endif
     if (state == NULL)
         return NULL;
@@ -559,7 +559,7 @@ static PyObject *authGSSServerUserName(PyObject *self, PyObject *args)
 #if PY_MAJOR_VERSION >= 3
     state = PyCapsule_GetPointer(pystate, NULL);
 #else
-    state = (gss_client_state *)PyCObject_AsVoidPtr(pystate);
+    state = (gss_server_state *)PyCObject_AsVoidPtr(pystate);
 #endif
     if (state == NULL)
         return NULL;
@@ -587,7 +587,7 @@ static PyObject *authGSSServerTargetName(PyObject *self, PyObject *args)
 #if PY_MAJOR_VERSION >= 3
     state = PyCapsule_GetPointer(pystate, NULL);
 #else
-    state = (gss_client_state *)PyCObject_AsVoidPtr(pystate);
+    state = (gss_server_state *)PyCObject_AsVoidPtr(pystate);
 #endif
     if (state == NULL)
         return NULL;
