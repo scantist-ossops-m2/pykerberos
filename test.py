@@ -19,7 +19,10 @@
 import kerberos
 import getopt
 import sys
-import httplib
+try:
+    import httplib
+except ImportError as ex:
+    import http.client as httplib
 import socket
 import ssl
 
