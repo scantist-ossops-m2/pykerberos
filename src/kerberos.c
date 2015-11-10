@@ -136,7 +136,7 @@ static PyObject* authGSSClientInit(PyObject* self, PyObject* args, PyObject* key
         return NULL;
     }
 
-    return Py_BuildValue("(iO)", result, pystate);
+    return Py_BuildValue("(iN)", result, pystate);
 }
 
 static PyObject *authGSSClientClean(PyObject *self, PyObject *args) {
@@ -389,7 +389,7 @@ static PyObject *authGSSServerInit(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    return Py_BuildValue("(iO)", result, pystate);
+    return Py_BuildValue("(iN)", result, pystate);
 }
 
 static PyObject *authGSSServerClean(PyObject *self, PyObject *args) {
