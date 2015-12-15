@@ -26,9 +26,9 @@ Kerberos authentication based on <http://www.ietf.org/rfc/rfc4559.txt>.
 
 """
 
-def check_krb5_config(*options):
+def check_krb5_config(*options, **kwargs):
     try:
-        process = subprocess.Popen(("krb5-config",) + options, stdout=subprocess.PIPE, universal_newlines=True)
+        process = subprocess.Popen((kwargs.get('command_name', 'krb5-config'),) + options, stdout=subprocess.PIPE, universal_newlines=True)
         output, unused_err = process.communicate()
         retcode = process.poll()
         if retcode:
@@ -39,7 +39,11 @@ def check_krb5_config(*options):
         return output.split()
     except OSError as e:
         if e.errno == 2:
-            raise Exception("You are missing krb5-config")
+            try:
+                return check_krb5_config(*options, command_name="krb5-config.mit")
+            except OSError as e2:
+                if e2.errno == 2:
+                    raise Exception("You are missing krb5-config(.mit)")
 
 def check_krb5_version():
     krb5_vers = check_krb5_config("--version")
