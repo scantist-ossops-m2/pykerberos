@@ -763,12 +763,6 @@ int authenticate_gss_server_step(gss_server_state *state, const char *challenge)
     strncpy(state->username, (char*) output_token.value, output_token.length);
     state->username[output_token.length] = 0;
 
-    // Free output tocken if neccessary
-    if (output_token.length)
-    {
-        maj_stat = gss_release_buffer(&min_stat, &output_token);
-    }
-
     // Get the target name if no server creds were supplied
     if (state->server_creds == GSS_C_NO_CREDENTIAL)
     {
@@ -779,6 +773,11 @@ int authenticate_gss_server_step(gss_server_state *state, const char *challenge)
             ret = AUTH_GSS_ERROR;
             goto end;
         }
+
+        // Free output token if necessary before reusing
+        if (output_token.length)
+            gss_release_buffer(&min_stat, &output_token);
+
         maj_stat = gss_display_name(&min_stat, target_name, &output_token, NULL);
         if (GSS_ERROR(maj_stat))
         {
