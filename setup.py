@@ -60,7 +60,7 @@ if krb5_ver:
 
 setup (
     name = "pykerberos",
-    version = "1.1.9",
+    version = "1.1.10",
     description = "High-level interface to Kerberos",
     long_description=long_description,
     license="ASL 2.0",
