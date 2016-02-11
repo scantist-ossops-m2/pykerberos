@@ -28,13 +28,11 @@ Kerberos authentication based on <http://www.ietf.org/rfc/rfc4559.txt>.
 
 def check_krb5_config(*options, **kwargs):
     try:
-        process = subprocess.Popen((kwargs.get('command_name', 'krb5-config'),) + options, stdout=subprocess.PIPE, universal_newlines=True)
+        cmd = kwargs.get('command_name', 'krb5-config')
+        process = subprocess.Popen((cmd,) + options, stdout=subprocess.PIPE, universal_newlines=True)
         output, unused_err = process.communicate()
         retcode = process.poll()
         if retcode:
-            cmd = kwargs.get("args")
-            if cmd is None:
-                cmd = popenargs[0]
             raise subprocess.CalledProcessError(retcode, cmd, output=output)
         return output.split()
     except OSError as e:
