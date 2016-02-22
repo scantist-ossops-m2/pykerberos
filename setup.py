@@ -36,7 +36,7 @@ def check_krb5_config(*options, **kwargs):
             raise subprocess.CalledProcessError(retcode, cmd, output=output)
         return output.split()
     except OSError as e:
-        if e.errno == 2:
+        if e.errno == 2 and command_name != "krb5-config.mit":
             try:
                 return check_krb5_config(*options, command_name="krb5-config.mit")
             except OSError as e2:
