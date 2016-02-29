@@ -603,7 +603,7 @@ end:
 	if (output_token.value)
 		gss_release_buffer(&min_stat, &output_token);
 
-    if (input_token.value)
+    if (!user && input_token.value)
         gss_release_buffer(&min_stat, &input_token);
 
 	return ret;
