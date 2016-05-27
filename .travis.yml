@@ -11,3 +11,4 @@ before_install:
   - sudo apt-get install libkrb5-dev
 install:
   - pip install .
+script: date
