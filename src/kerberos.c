@@ -140,7 +140,6 @@ static PyObject* authGSSClientInit(PyObject* self, PyObject* args, PyObject* key
 }
 
 static PyObject *authGSSClientClean(PyObject *self, PyObject *args) {
-    PyErr_WarnEx(PyExc_RuntimeError, "kerberos.authGSSClientClean is deprecated.", 2);
     return Py_BuildValue("i", AUTH_GSS_COMPLETE);
 }
 
@@ -393,7 +392,6 @@ static PyObject *authGSSServerInit(PyObject *self, PyObject *args) {
 }
 
 static PyObject *authGSSServerClean(PyObject *self, PyObject *args) {
-    PyErr_WarnEx(PyExc_RuntimeError, "kerberos.authGSSServerClean is deprecated.", 2);
     return Py_BuildValue("i", AUTH_GSS_COMPLETE);
 }
 

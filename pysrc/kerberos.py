@@ -120,8 +120,9 @@ def authGSSClientInit(service, principal=None, gssflags=GSS_C_MUTUAL_FLAG|GSS_C_
 
 def authGSSClientClean(context):
     """
-    Destroys the context for GSSAPI client-side authentication. After this call the context
-    object is invalid and should not be used again.
+    Destroys the context for GSSAPI client-side authentication. This function is provided for API
+    compatibility with original pykerberos but does nothing. The context object destroys itself
+    when it is reclaimed.
 
     @param context: the context object returned from authGSSClientInit.
     @return: a result code (see above).
@@ -193,8 +194,9 @@ def authGSSServerInit(service):
 
 def authGSSServerClean(context):
     """
-    Destroys the context for GSSAPI server-side authentication. After this call the context
-    object is invalid and should not be used again.
+    Destroys the context for GSSAPI server-side authentication. This function is provided for API
+    compatibility with original pykerberos but does nothing. The context object destroys itself
+    when it is reclaimed.
 
     @param context: the context object returned from authGSSServerInit.
     @return: a result code (see above).
