@@ -45,7 +45,7 @@ def check_krb5_config(*options, **kwargs):
 
 def check_krb5_version():
     krb5_vers = check_krb5_config("--version")
-    if len(krb5_vers) == 4:
+    if krb5_vers and len(krb5_vers) == 4:
         if int(krb5_vers[3].split('.')[1].split('-')[0]) >= 10:
             return r'-DGSSAPI_EXT'
 
