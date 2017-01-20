@@ -50,10 +50,11 @@ def main():
     host = "host.example.com"
     realm ="HOST.EXAMPLE.COM"
     port = 8008
+    mech = None
     use_ssl = False
     allowedActions = ("service", "basic", "gssapi", "server",)
 
-    options, args = getopt.getopt(sys.argv[1:], "u:p:s:h:i:r:x")
+    options, args = getopt.getopt(sys.argv[1:], "u:p:s:h:i:r:m:x")
 
     for option, value in options:
         if option == "-u":
@@ -68,6 +69,8 @@ def main():
             port = value
         elif option == "-r":
             realm = value
+        elif option == "-m":
+            mech = value
         elif option == "-x":
             use_ssl = True
 
@@ -83,7 +86,7 @@ def main():
     if "service" in actions:
         print("\n*** Running Service Principal test")
         s, h = service.split("@")
-        testServicePrincipal(s, h);
+        testServicePrincipal(s, h)
 
     # GSS Basic test
     if "basic" in actions:
@@ -100,7 +103,7 @@ def main():
 
     if "server" in actions:
         print("\n*** Running HTTP test")
-        testHTTP(host, port, use_ssl, service)
+        testHTTP(host, port, use_ssl, service, mech)
 
     print("\n*** Done\n")
 
@@ -129,27 +132,27 @@ def testGSSAPI(service):
         else:
             return "Error"
 
-    rc, vc = kerberos.authGSSClientInit(service);
+    rc, vc = kerberos.authGSSClientInit(service)
     print("Status for authGSSClientInit = %s" % statusText(rc))
     if rc != 1:
         return
 
-    rs, vs = kerberos.authGSSServerInit(service);
+    rs, vs = kerberos.authGSSServerInit(service)
     print("Status for authGSSServerInit = %s" % statusText(rs))
     if rs != 1:
         return
 
-    rc = kerberos.authGSSClientStep(vc, "");
+    rc = kerberos.authGSSClientStep(vc, "")
     print("Status for authGSSClientStep = %s" % statusText(rc))
     if rc != 0:
         return
 
-    rs = kerberos.authGSSServerStep(vs, kerberos.authGSSClientResponse(vc));
+    rs = kerberos.authGSSServerStep(vs, kerberos.authGSSClientResponse(vc))
     print("Status for authGSSServerStep = %s" % statusText(rs))
     if rs == -1:
         return
 
-    rc = kerberos.authGSSClientStep(vc, kerberos.authGSSServerResponse(vs));
+    rc = kerberos.authGSSClientStep(vc, kerberos.authGSSServerResponse(vs))
     print("Status for authGSSClientStep = %s" % statusText(rc))
     if rc == -1:
         return
@@ -158,13 +161,13 @@ def testGSSAPI(service):
     print("Server target name: %s" % kerberos.authGSSServerTargetName(vs))
     print("Client user name: %s" % kerberos.authGSSClientUserName(vc))
 
-    rc = kerberos.authGSSClientClean(vc);
+    rc = kerberos.authGSSClientClean(vc)
     print("Status for authGSSClientClean = %s" % statusText(rc))
 
-    rs = kerberos.authGSSServerClean(vs);
+    rs = kerberos.authGSSServerClean(vs)
     print("Status for authGSSServerClean = %s" % statusText(rs))
 
-def testHTTP(host, port, use_ssl, service):
+def testHTTP(host, port, use_ssl, service, mech):
 
     class HTTPSConnection_SSLv3(httplib.HTTPSConnection):
         "This class allows communication via SSL."
@@ -216,13 +219,19 @@ def testHTTP(host, port, use_ssl, service):
         return
 
     try:
-        rc, vc = kerberos.authGSSClientInit(service=service);
+        mech_oid = None
+        if mech and mech.lower() == "krb5":
+            mech_oid = kerberos.GSS_MECH_OID_KRB5
+        elif mech and mech.lower() == "spnego":
+            mech_oid = kerberos.GSS_MECH_OID_SPNEGO
+
+        rc, vc = kerberos.authGSSClientInit(service=service, mech_oid=mech_oid)
     except kerberos.GSSError as e:
         print("Could not initialize GSSAPI: %s/%s" % (e[0][0], e[1][0]))
         return
 
     try:
-        kerberos.authGSSClientStep(vc, "");
+        kerberos.authGSSClientStep(vc, "")
     except kerberos.GSSError as e:
         print("Could not do GSSAPI step with continue: %s/%s" % (e[0][0], e[1][0]))
         return
@@ -263,7 +272,7 @@ def testHTTP(host, port, use_ssl, service):
         return
 
     try:
-        rc = kerberos.authGSSClientClean(vc);
+        kerberos.authGSSClientClean(vc)
     except kerberos.GSSError as e:
         print("Could not clean-up GSSAPI: %s/%s" % (e[0][0], e[1][0]))
         return
