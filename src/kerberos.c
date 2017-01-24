@@ -136,9 +136,15 @@ static PyObject* authGSSClientInit(PyObject* self, PyObject* args, PyObject* key
         return NULL;
     }
 
-    if (pymech_oid != NULL && PyCapsule_CheckExact(pymech_oid)) {
-        const char * mech_oid_name = PyCapsule_GetName(pymech_oid);
-        mech_oid = PyCapsule_GetPointer(pymech_oid, mech_oid_name);
+    if (pymech_oid != NULL) {
+        if (!PyCheck(pymech_oid)) {
+            PyErr_SetString(PyExc_TypeError, "Invalid type for mech_oid");
+            return NULL;
+        }
+        mech_oid = PyGet(pymech_oid, gss_OID_desc);
+        if (mech_oid == NULL) {
+            return NULL;
+        }
     }
 
     state = (gss_client_state *) malloc(sizeof(gss_client_state));
@@ -610,8 +616,8 @@ void initkerberos(void)
     PyDict_SetItemString(d, "GSS_C_ANON_FLAG", PyInt_FromLong(GSS_C_ANON_FLAG));
     PyDict_SetItemString(d, "GSS_C_PROT_READY_FLAG", PyInt_FromLong(GSS_C_PROT_READY_FLAG));
     PyDict_SetItemString(d, "GSS_C_TRANS_FLAG", PyInt_FromLong(GSS_C_TRANS_FLAG));
-    PyDict_SetItemString(d, "GSS_MECH_OID_KRB5", PyCapsule_New(&krb5_mech_oid, "kerberos.GSS_MECH_OID_KRB5", NULL));
-    PyDict_SetItemString(d, "GSS_MECH_OID_SPNEGO", PyCapsule_New(&spnego_mech_oid, "kerberos.GSS_MECH_OID_SPNEGO", NULL));
+    PyDict_SetItemString(d, "GSS_MECH_OID_KRB5", PyNew(&krb5_mech_oid, NULL));
+    PyDict_SetItemString(d, "GSS_MECH_OID_SPNEGO", PyNew(&spnego_mech_oid, NULL));
 
 error:
     if (PyErr_Occurred())
