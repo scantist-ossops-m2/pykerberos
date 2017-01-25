@@ -143,6 +143,7 @@ static PyObject* authGSSClientInit(PyObject* self, PyObject* args, PyObject* key
         }
         mech_oid = PyGet(pymech_oid, gss_OID_desc);
         if (mech_oid == NULL) {
+            PyErr_SetString(PyExc_TypeError, "Invalid value for mech_oid");
             return NULL;
         }
     }
