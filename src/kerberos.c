@@ -34,6 +34,12 @@
     #define PyClear(object) PyCObject_SetVoidPtr(object, NULL)
 #endif
 
+static char krb5_mech_oid_bytes [] = "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02";
+gss_OID_desc krb5_mech_oid = { 9, &krb5_mech_oid_bytes };
+
+static char spnego_mech_oid_bytes[] = "\x2b\x06\x01\x05\x05\x02";
+gss_OID_desc spnego_mech_oid = { 6, &spnego_mech_oid_bytes };
+
 PyObject *KrbException_class;
 PyObject *BasicAuthException_class;
 PyObject *PwdChangeException_class;
@@ -120,18 +126,32 @@ static PyObject* authGSSClientInit(PyObject* self, PyObject* args, PyObject* key
     const char *principal = NULL;
     gss_client_state *state;
     PyObject *pystate;
-    static char *kwlist[] = {"service", "principal", "gssflags", NULL};
+    gss_OID mech_oid = GSS_C_NO_OID;
+    PyObject *pymech_oid = NULL;
+    static char *kwlist[] = {"service", "principal", "gssflags", "mech_oid", NULL};
     long int gss_flags = GSS_C_MUTUAL_FLAG | GSS_C_SEQUENCE_FLAG;
     int result = 0;
 
-    if (!PyArg_ParseTupleAndKeywords(args, keywds, "s|zl", kwlist, &service, &principal, &gss_flags)) {
+    if (!PyArg_ParseTupleAndKeywords(args, keywds, "s|zlO", kwlist, &service, &principal, &gss_flags, &pymech_oid)) {
         return NULL;
+    }
+
+    if (pymech_oid != NULL) {
+        if (!PyCheck(pymech_oid)) {
+            PyErr_SetString(PyExc_TypeError, "Invalid type for mech_oid");
+            return NULL;
+        }
+        mech_oid = PyGet(pymech_oid, gss_OID_desc);
+        if (mech_oid == NULL) {
+            PyErr_SetString(PyExc_TypeError, "Invalid value for mech_oid");
+            return NULL;
+        }
     }
 
     state = (gss_client_state *) malloc(sizeof(gss_client_state));
     pystate = PyNew(state, &destruct_client);
 
-    result = authenticate_gss_client_init(service, principal, gss_flags, state);
+    result = authenticate_gss_client_init(service, principal, gss_flags, mech_oid, state);
     if (result == AUTH_GSS_ERROR) {
         return NULL;
     }
@@ -597,6 +617,8 @@ void initkerberos(void)
     PyDict_SetItemString(d, "GSS_C_ANON_FLAG", PyInt_FromLong(GSS_C_ANON_FLAG));
     PyDict_SetItemString(d, "GSS_C_PROT_READY_FLAG", PyInt_FromLong(GSS_C_PROT_READY_FLAG));
     PyDict_SetItemString(d, "GSS_C_TRANS_FLAG", PyInt_FromLong(GSS_C_TRANS_FLAG));
+    PyDict_SetItemString(d, "GSS_MECH_OID_KRB5", PyNew(&krb5_mech_oid, NULL));
+    PyDict_SetItemString(d, "GSS_MECH_OID_SPNEGO", PyNew(&spnego_mech_oid, NULL));
 
 error:
     if (PyErr_Occurred())
