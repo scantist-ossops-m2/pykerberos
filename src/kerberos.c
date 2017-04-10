@@ -163,13 +163,62 @@ static PyObject *authGSSClientClean(PyObject *self, PyObject *args) {
     return Py_BuildValue("i", AUTH_GSS_COMPLETE);
 }
 
-static PyObject *authGSSClientStep(PyObject *self, PyObject *args) {
+static PyObject *buildChannelBindingsStruct(PyObject *self, PyObject *args, PyObject* keywds) {
+    int initiator_addrtype = GSS_C_AF_UNSPEC;
+    int acceptor_addrtype = GSS_C_AF_UNSPEC;
+    const char *initiator_address = NULL;
+    const char *acceptor_address = NULL;
+    const char *application_data = NULL;
+    PyObject *pychan_bindings;
+    struct gss_channel_bindings_struct *input_chan_bindings;
+	static char *kwlist[] = {"initiator_addrtype", "acceptor_addrtype", "initiator_address", "acceptor_address", "application_data", NULL};
+
+	if (!PyArg_ParseTupleAndKeywords(args, keywds, "|iisss", kwlist, &initiator_addrtype, &acceptor_addrtype, &initiator_address, &acceptor_address, &application_data)) {
+	    return NULL;
+	}
+
+	input_chan_bindings = (struct gss_channel_bindings_struct *) malloc(sizeof(struct gss_channel_bindings_struct));
+	pychan_bindings = PyNew(input_chan_bindings, NULL);
+
+    input_chan_bindings->initiator_addrtype = initiator_addrtype;
+    if (initiator_address == NULL) {
+        input_chan_bindings->initiator_address.length = 0;
+        input_chan_bindings->initiator_address.value = NULL;
+    } else {
+        input_chan_bindings->initiator_address.length = strlen(initiator_address);
+        input_chan_bindings->initiator_address.value = (char *)initiator_address;
+    }
+
+    input_chan_bindings->acceptor_addrtype = acceptor_addrtype;
+    if (acceptor_address == NULL) {
+        input_chan_bindings->acceptor_address.length = 0;
+        input_chan_bindings->acceptor_address.value = NULL;
+    } else {
+        input_chan_bindings->acceptor_address.length = strlen(acceptor_address);
+        input_chan_bindings->acceptor_address.value = (char *)acceptor_address;
+    }
+
+    if (application_data == NULL) {
+        input_chan_bindings->application_data.length = 0;
+        input_chan_bindings->application_data.value = NULL;
+    } else {
+        input_chan_bindings->application_data.length = strlen(application_data);
+        input_chan_bindings->application_data.value = (char *)application_data;
+    }
+
+    return Py_BuildValue("N", pychan_bindings);
+}
+
+static PyObject *authGSSClientStep(PyObject *self, PyObject *args, PyObject* keywds) {
     gss_client_state *state;
     PyObject *pystate;
     char *challenge = NULL;
+    PyObject *pychan_bindings = NULL;
+    struct gss_channel_bindings_struct *input_chan_bindings;
+    static char *kwlist[] = {"state", "challenge", "input_chan_bindings", NULL};
     int result = 0;
 
-    if (!PyArg_ParseTuple(args, "Os", &pystate, &challenge)) {
+    if (!PyArg_ParseTupleAndKeywords(args, keywds, "Os|O", kwlist, &pystate, &challenge, &pychan_bindings)) {
         return NULL;
     }
 
@@ -183,7 +232,17 @@ static PyObject *authGSSClientStep(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    result = authenticate_gss_client_step(state, challenge);
+    if (pychan_bindings == NULL) {
+        input_chan_bindings = GSS_C_NO_CHANNEL_BINDINGS;
+    } else {
+        if (!PyCheck(pychan_bindings)) {
+            PyErr_SetString(PyExc_TypeError, "Expected a gss_channel_bindings_struct object");
+            return NULL;
+        }
+        input_chan_bindings = PyGet(pychan_bindings, struct gss_channel_bindings_struct);
+    }
+
+    result = authenticate_gss_client_step(state, challenge, input_chan_bindings);
     if (result == AUTH_GSS_ERROR) {
         return NULL;
     }
@@ -517,7 +576,7 @@ static PyMethodDef KerberosMethods[] = {
      "Initialize client-side GSSAPI operations."},
     {"authGSSClientClean",  authGSSClientClean, METH_VARARGS,
      "Terminate client-side GSSAPI operations."},
-    {"authGSSClientStep",  authGSSClientStep, METH_VARARGS,
+    {"authGSSClientStep",  (PyCFunction)authGSSClientStep, METH_VARARGS | METH_KEYWORDS,
      "Do a client-side GSSAPI step."},
     {"authGSSClientResponse",  authGSSClientResponse, METH_VARARGS,
      "Get the response from the last client-side GSSAPI step."},
@@ -531,6 +590,8 @@ static PyMethodDef KerberosMethods[] = {
      "Do a GSSAPI wrap."},
     {"authGSSClientUnwrap",  authGSSClientUnwrap, METH_VARARGS,
      "Do a GSSAPI unwrap."},
+    {"buildChannelBindingsStruct",  (PyCFunction)buildChannelBindingsStruct, METH_VARARGS | METH_KEYWORDS,
+     "Build the Channel Bindings Structure based on the input."},
 #ifdef GSSAPI_EXT
     {"authGSSClientWrapIov",  authGSSClientWrapIov, METH_VARARGS,
      "Do a GSSAPI iov wrap."},
