@@ -1,3 +1,6 @@
+NOTE: this fork of ccs-kerberos is currently on life support mode as Apple has resumed work on upstream. Please try to use https://pypi.python.org/pypi/kerberos instead of this fork if possible.
+
+
 =========================================================
 PyKerberos Package
 
