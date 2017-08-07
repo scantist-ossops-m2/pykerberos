@@ -163,48 +163,68 @@ static PyObject *authGSSClientClean(PyObject *self, PyObject *args) {
     return Py_BuildValue("i", AUTH_GSS_COMPLETE);
 }
 
-static PyObject *buildChannelBindingsStruct(PyObject *self, PyObject *args, PyObject* keywds) {
+#if PY_MAJOR_VERSION >= 3
+void destruct_channel_bindings(PyObject* o) {
+    struct gss_channel_bindings_struct *channel_bindings = PyCapsule_GetPointer(o, NULL);
+#else
+void destruct_channel_bindings(void* o) {
+    struct gss_channel_bindings_struct *channel_bindings = (struct gss_channel_bindings_struct *)o;
+#endif
+
+    if (channel_bindings != NULL) {
+        if (channel_bindings->initiator_address.value != NULL) {
+            PyMem_Free(channel_bindings->initiator_address.value);
+        }
+
+        if (channel_bindings->acceptor_address.value != NULL) {
+            PyMem_Free(channel_bindings->acceptor_address.value);
+        }
+
+        if (channel_bindings->application_data.value != NULL) {
+            PyMem_Free(channel_bindings->application_data.value);
+        }
+
+        free(channel_bindings);
+    }
+}
+
+static PyObject *channelBindings(PyObject *self, PyObject *args, PyObject* keywds) {
     int initiator_addrtype = GSS_C_AF_UNSPEC;
     int acceptor_addrtype = GSS_C_AF_UNSPEC;
-    const char *initiator_address = NULL;
-    const char *acceptor_address = NULL;
-    const char *application_data = NULL;
-    PyObject *pychan_bindings;
+
+    const char *encoding = NULL;
+    char *initiator_address = NULL;
+    char *acceptor_address = NULL;
+    char *application_data = NULL;
+    int initiator_length = NULL;
+    int acceptor_length = NULL;
+    int application_length = NULL;
+
+    PyObject *pychan_bindings = NULL;
     struct gss_channel_bindings_struct *input_chan_bindings;
-	static char *kwlist[] = {"initiator_addrtype", "acceptor_addrtype", "initiator_address", "acceptor_address", "application_data", NULL};
+    static char *kwlist[] = {"initiator_addrtype", "initiator_address", "acceptor_addrtype",
+        "acceptor_address", "application_data", NULL};
 
-	if (!PyArg_ParseTupleAndKeywords(args, keywds, "|iisss", kwlist, &initiator_addrtype, &acceptor_addrtype, &initiator_address, &acceptor_address, &application_data)) {
-	    return NULL;
-	}
+    if (!PyArg_ParseTupleAndKeywords(args, keywds, "|iet#iet#et#", kwlist,
+            &initiator_addrtype, &encoding, &initiator_address, &initiator_length,
+            &acceptor_addrtype, &encoding, &acceptor_address, &acceptor_length,
+            &encoding, &application_data, &application_length)) {
+        return NULL;
+    }
 
-	input_chan_bindings = (struct gss_channel_bindings_struct *) malloc(sizeof(struct gss_channel_bindings_struct));
-	pychan_bindings = PyNew(input_chan_bindings, NULL);
+    input_chan_bindings = (struct gss_channel_bindings_struct *) malloc(sizeof(struct gss_channel_bindings_struct));
+    pychan_bindings = PyNew(input_chan_bindings, &destruct_channel_bindings);
 
     input_chan_bindings->initiator_addrtype = initiator_addrtype;
-    if (initiator_address == NULL) {
-        input_chan_bindings->initiator_address.length = 0;
-        input_chan_bindings->initiator_address.value = NULL;
-    } else {
-        input_chan_bindings->initiator_address.length = strlen(initiator_address);
-        input_chan_bindings->initiator_address.value = (char *)initiator_address;
-    }
+    input_chan_bindings->initiator_address.length = initiator_length;
+    input_chan_bindings->initiator_address.value = initiator_address;
 
     input_chan_bindings->acceptor_addrtype = acceptor_addrtype;
-    if (acceptor_address == NULL) {
-        input_chan_bindings->acceptor_address.length = 0;
-        input_chan_bindings->acceptor_address.value = NULL;
-    } else {
-        input_chan_bindings->acceptor_address.length = strlen(acceptor_address);
-        input_chan_bindings->acceptor_address.value = (char *)acceptor_address;
-    }
+    input_chan_bindings->acceptor_address.length = acceptor_length;
+    input_chan_bindings->acceptor_address.value = acceptor_address;
 
-    if (application_data == NULL) {
-        input_chan_bindings->application_data.length = 0;
-        input_chan_bindings->application_data.value = NULL;
-    } else {
-        input_chan_bindings->application_data.length = strlen(application_data);
-        input_chan_bindings->application_data.value = (char *)application_data;
-    }
+    input_chan_bindings->application_data.length = application_length;
+    input_chan_bindings->application_data.value = application_data;
 
     return Py_BuildValue("N", pychan_bindings);
 }
@@ -214,11 +234,11 @@ static PyObject *authGSSClientStep(PyObject *self, PyObject *args, PyObject* key
     PyObject *pystate;
     char *challenge = NULL;
     PyObject *pychan_bindings = NULL;
-    struct gss_channel_bindings_struct *input_chan_bindings;
-    static char *kwlist[] = {"state", "challenge", "input_chan_bindings", NULL};
+    struct gss_channel_bindings_struct *channel_bindings;
+    static char *kwlist[] = {"state", "challenge", "channel_bindings", NULL};
     int result = 0;
 
-    if (!PyArg_ParseTupleAndKeywords(args, keywds, "Os|O", kwlist, &pystate, &challenge, &pychan_bindings)) {
+    if (! PyArg_ParseTupleAndKeywords(args, keywds, "Os|O", kwlist, &pystate, &challenge, &pychan_bindings)) {
         return NULL;
     }
 
@@ -233,16 +253,16 @@ static PyObject *authGSSClientStep(PyObject *self, PyObject *args, PyObject* key
     }
 
     if (pychan_bindings == NULL) {
-        input_chan_bindings = GSS_C_NO_CHANNEL_BINDINGS;
+        channel_bindings = GSS_C_NO_CHANNEL_BINDINGS;
     } else {
         if (!PyCheck(pychan_bindings)) {
             PyErr_SetString(PyExc_TypeError, "Expected a gss_channel_bindings_struct object");
             return NULL;
         }
-        input_chan_bindings = PyGet(pychan_bindings, struct gss_channel_bindings_struct);
+        channel_bindings = PyGet(pychan_bindings, struct gss_channel_bindings_struct);
     }
 
-    result = authenticate_gss_client_step(state, challenge, input_chan_bindings);
+    result = authenticate_gss_client_step(state, challenge, channel_bindings);
     if (result == AUTH_GSS_ERROR) {
         return NULL;
     }
@@ -590,7 +610,7 @@ static PyMethodDef KerberosMethods[] = {
      "Do a GSSAPI wrap."},
     {"authGSSClientUnwrap",  authGSSClientUnwrap, METH_VARARGS,
      "Do a GSSAPI unwrap."},
-    {"buildChannelBindingsStruct",  (PyCFunction)buildChannelBindingsStruct, METH_VARARGS | METH_KEYWORDS,
+    {"channelBindings",  (PyCFunction)channelBindings, METH_VARARGS | METH_KEYWORDS,
      "Build the Channel Bindings Structure based on the input."},
 #ifdef GSSAPI_EXT
     {"authGSSClientWrapIov",  authGSSClientWrapIov, METH_VARARGS,
@@ -680,6 +700,29 @@ void initkerberos(void)
     PyDict_SetItemString(d, "GSS_C_TRANS_FLAG", PyInt_FromLong(GSS_C_TRANS_FLAG));
     PyDict_SetItemString(d, "GSS_MECH_OID_KRB5", PyNew(&krb5_mech_oid, NULL));
     PyDict_SetItemString(d, "GSS_MECH_OID_SPNEGO", PyNew(&spnego_mech_oid, NULL));
+
+    PyDict_SetItemString(d, "GSS_C_AF_UNSPEC", PyInt_FromLong(GSS_C_AF_UNSPEC));
+    PyDict_SetItemString(d, "GSS_C_AF_LOCAL", PyInt_FromLong(GSS_C_AF_LOCAL));
+    PyDict_SetItemString(d, "GSS_C_AF_INET", PyInt_FromLong(GSS_C_AF_INET));
+    PyDict_SetItemString(d, "GSS_C_AF_IMPLINK", PyInt_FromLong(GSS_C_AF_IMPLINK));
+    PyDict_SetItemString(d, "GSS_C_AF_PUP", PyInt_FromLong(GSS_C_AF_PUP));
+    PyDict_SetItemString(d, "GSS_C_AF_CHAOS", PyInt_FromLong(GSS_C_AF_CHAOS));
+    PyDict_SetItemString(d, "GSS_C_AF_NS", PyInt_FromLong(GSS_C_AF_NS));
+    PyDict_SetItemString(d, "GSS_C_AF_NBS", PyInt_FromLong(GSS_C_AF_NBS));
+    PyDict_SetItemString(d, "GSS_C_AF_ECMA", PyInt_FromLong(GSS_C_AF_ECMA));
+    PyDict_SetItemString(d, "GSS_C_AF_DATAKIT", PyInt_FromLong(GSS_C_AF_DATAKIT));
+    PyDict_SetItemString(d, "GSS_C_AF_CCITT", PyInt_FromLong(GSS_C_AF_CCITT));
+    PyDict_SetItemString(d, "GSS_C_AF_SNA", PyInt_FromLong(GSS_C_AF_SNA));
+    PyDict_SetItemString(d, "GSS_C_AF_DECnet", PyInt_FromLong(GSS_C_AF_DECnet));
+    PyDict_SetItemString(d, "GSS_C_AF_DLI", PyInt_FromLong(GSS_C_AF_DLI));
+    PyDict_SetItemString(d, "GSS_C_AF_LAT", PyInt_FromLong(GSS_C_AF_LAT));
+    PyDict_SetItemString(d, "GSS_C_AF_HYLINK", PyInt_FromLong(GSS_C_AF_HYLINK));
+    PyDict_SetItemString(d, "GSS_C_AF_APPLETALK", PyInt_FromLong(GSS_C_AF_APPLETALK));
+    PyDict_SetItemString(d, "GSS_C_AF_BSC", PyInt_FromLong(GSS_C_AF_BSC));
+    PyDict_SetItemString(d, "GSS_C_AF_DSS", PyInt_FromLong(GSS_C_AF_DSS));
+    PyDict_SetItemString(d, "GSS_C_AF_OSI", PyInt_FromLong(GSS_C_AF_OSI));
+    PyDict_SetItemString(d, "GSS_C_AF_X25", PyInt_FromLong(GSS_C_AF_X25));
+    PyDict_SetItemString(d, "GSS_C_AF_NULLADDR", PyInt_FromLong(GSS_C_AF_NULLADDR));
 
 error:
     if (PyErr_Occurred())

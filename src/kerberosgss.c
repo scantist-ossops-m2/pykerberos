@@ -205,7 +205,7 @@ int authenticate_gss_client_clean(gss_client_state *state)
     return ret;
 }
 
-int authenticate_gss_client_step(gss_client_state* state, const char* challenge, struct gss_channel_bindings_struct* input_chan_bindings)
+int authenticate_gss_client_step(gss_client_state* state, const char* challenge, struct gss_channel_bindings_struct* channel_bindings)
 {
     OM_uint32 maj_stat;
     OM_uint32 min_stat;
@@ -238,7 +238,7 @@ int authenticate_gss_client_step(gss_client_state* state, const char* challenge,
                                     state->mech_oid,
                                     (OM_uint32)state->gss_flags,
                                     0,
-                                    input_chan_bindings,
+                                    channel_bindings,
                                     &input_token,
                                     NULL,
                                     &output_token,

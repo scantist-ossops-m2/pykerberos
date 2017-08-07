@@ -56,7 +56,7 @@ char* server_principal_details(const char* service, const char* hostname);
 
 int authenticate_gss_client_init(const char* service, const char* principal, long int gss_flags, gss_OID mech_oid, gss_client_state* state);
 int authenticate_gss_client_clean(gss_client_state *state);
-int authenticate_gss_client_step(gss_client_state *state, const char *challenge, struct gss_channel_bindings_struct *input_chan_bindings);
+int authenticate_gss_client_step(gss_client_state *state, const char *challenge, struct gss_channel_bindings_struct *channel_bindings);
 int authenticate_gss_client_unwrap(gss_client_state* state, const char* challenge);
 int authenticate_gss_client_wrap(gss_client_state* state, const char* challenge, const char* user, int protect);
 #ifdef GSSAPI_EXT
