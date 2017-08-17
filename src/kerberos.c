@@ -50,7 +50,7 @@ static PyObject *checkPassword(PyObject *self, PyObject *args) {
     const char *pswd = NULL;
     const char *service = NULL;
     const char *default_realm = NULL;
-    const int verify = 1;
+    int verify = 1;
     int result = 0;
 
     if (!PyArg_ParseTuple(args, "ssss|b", &user, &pswd, &service, &default_realm, &verify)) {
