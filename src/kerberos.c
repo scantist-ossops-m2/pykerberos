@@ -196,9 +196,9 @@ static PyObject *channelBindings(PyObject *self, PyObject *args, PyObject* keywd
     char *initiator_address = NULL;
     char *acceptor_address = NULL;
     char *application_data = NULL;
-    int initiator_length = NULL;
-    int acceptor_length = NULL;
-    int application_length = NULL;
+    int initiator_length = 0;
+    int acceptor_length = 0;
+    int application_length = 0;
 
     PyObject *pychan_bindings = NULL;
     struct gss_channel_bindings_struct *input_chan_bindings;
