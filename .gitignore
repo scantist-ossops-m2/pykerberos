@@ -9,3 +9,6 @@ debian/files
 pykerberos.egg-info/
 /kerberos.so
 .idea
+CMakeLists.txt
+cmake-build-debug/
+

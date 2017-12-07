@@ -585,6 +585,135 @@ static PyObject *authGSSServerTargetName(PyObject *self, PyObject *args) {
     return Py_BuildValue("s", state->targetname);
 }
 
+static PyObject* authGSSWinRMEncryptMessage(PyObject* self, PyObject* args)
+{
+    char *input = NULL;
+    char *header = NULL;
+    int header_len = 0;
+    char *enc_output = NULL;
+    int enc_output_len = 0;
+    PyObject *pystate = NULL;
+    gss_client_state *state = NULL;
+    int result = 0;
+    PyObject *pyresult = NULL;
+
+    // NB: use et so we get a copy of the string (since gss_wrap_iov mutates it), and so we're certain it's always
+    // a UTF8 byte string
+    if (! PyArg_ParseTuple(args, "Oet", &pystate, "UTF-8", &input)) {
+        pyresult = NULL;
+        goto end;
+    }
+
+    if (!PyCheck(pystate)) {
+        PyErr_SetString(PyExc_TypeError, "Expected a context object");
+        pyresult = NULL;
+        goto end;
+    }
+
+    state = PyGet(pystate, gss_client_state);
+    if (state == NULL) {
+        pyresult = NULL;
+        goto end;
+    }
+
+    result = encrypt_message(state, input, &header, &header_len, &enc_output, &enc_output_len);
+
+    if (result == AUTH_GSS_ERROR) {
+        pyresult = NULL;
+        goto end;
+    }
+
+#if PY_MAJOR_VERSION >= 3
+    pyresult = Py_BuildValue("y# y#", enc_output, enc_output_len, header, header_len);
+#else
+    pyresult = Py_BuildValue("s# s#", enc_output, enc_output_len, header, header_len);
+#endif
+
+end:
+    if (input) {
+        PyMem_Free(input);
+    }
+    if (header) {
+        free(header);
+    }
+    if (enc_output) {
+        free(enc_output);
+    }
+
+    return pyresult;
+}
+
+static PyObject* authGSSWinRMDecryptMessage(PyObject* self, PyObject* args)
+{
+    char *header = NULL;
+    int header_len = 0;
+    char *enc_data = NULL;
+    int enc_data_len = 0;
+    PyObject *pystate = NULL;
+    PyObject *pyheader = NULL;
+    PyObject *pyenc_data = NULL;
+    gss_client_state *state = NULL;
+    char *dec_output = NULL;
+    int dec_output_len = 0;
+    int result = 0;
+    PyObject *pyresult = 0;
+
+    // NB: since the sig/data strings are arbitrary binary and don't conform to
+    // a valid encoding, none of the normal string marshaling types will work. We'll
+    // have to extract the data later.
+    if (! PyArg_ParseTuple(args, "OOO", &pystate, &pyenc_data, &pyheader)) {
+        pyresult = NULL;
+        goto end;
+    }
+
+    if (!PyCheck(pystate)) {
+        PyErr_SetString(PyExc_TypeError, "Expected a context object");
+        pyresult = NULL;
+        goto end;
+    }
+
+    state = PyGet(pystate, gss_client_state);
+    if (state == NULL) {
+        pyresult = NULL;
+        goto end;
+    }
+
+    // request the length and copy the header and encrypted input data from the Python strings
+    header_len = (int) PyBytes_Size(pyheader);
+    header = malloc(header_len);
+    memcpy(header, PyBytes_AsString(pyheader), header_len);
+
+    enc_data_len = (int) PyBytes_Size(pyenc_data);
+    enc_data = malloc(enc_data_len);
+    memcpy(enc_data, PyBytes_AsString(pyenc_data), enc_data_len);
+
+    result = decrypt_message(state, header, header_len, enc_data, enc_data_len, &dec_output, &dec_output_len);
+
+    if (result == AUTH_GSS_ERROR) {
+        pyresult = NULL;
+        goto end;
+    }
+
+#if PY_MAJOR_VERSION >= 3
+    pyresult = Py_BuildValue("y#", dec_output, dec_output_len);
+#else
+    pyresult = Py_BuildValue("s#", dec_output, dec_output_len);
+#endif
+
+end:
+    if (header) {
+        free(header);
+    }
+    if (enc_data) {
+        free(enc_data);
+    }
+    if (dec_output) {
+        free(dec_output);
+    }
+
+    return pyresult;
+}
+
 static PyMethodDef KerberosMethods[] = {
     {"checkPassword",  checkPassword, METH_VARARGS,
      "Check the supplied user/password against Kerberos KDC."},
@@ -592,6 +721,10 @@ static PyMethodDef KerberosMethods[] = {
      "Change the user password."},
     {"getServerPrincipalDetails",  getServerPrincipalDetails, METH_VARARGS,
      "Return the service principal for a given service and hostname."},
+    {"authGSSWinRMEncryptMessage",  authGSSWinRMEncryptMessage, METH_VARARGS,
+     "Encrypt a message"},
+    {"authGSSWinRMDecryptMessage",  authGSSWinRMDecryptMessage, METH_VARARGS,
+     "Decrypt a message"},
     {"authGSSClientInit",  (PyCFunction)authGSSClientInit, METH_VARARGS | METH_KEYWORDS,
      "Initialize client-side GSSAPI operations."},
     {"authGSSClientClean",  authGSSClientClean, METH_VARARGS,

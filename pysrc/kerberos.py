@@ -290,3 +290,25 @@ def channelBindings(**kwargs):
     @return: The gss_channel_bindings_struct pointer, which is the channel
         bindings structure that can be passed onto authGSSClientStep
     """
+
+def authGSSWinRMEncryptMessage(context, message):
+    """
+    Encrypts a message body with the current Kerberos session key using IOV settings for WinRM
+
+    @param context: The context object returned from L{authGSSClientInit}.
+    @param message: The plaintext message to be encrypted. 
+    @return: A tuple of (encrypted_data, header) where encrypted_data is the 
+        ciphertext result of the encryption operation, and header is the GSSAPI
+        header describing the encryption parameters. Both strings contain opaque
+        binary data.
+    """
+
+def authGSSWinRMDecryptMessage(context, encrypted_data, header):
+    """
+    Decrypts a ciphertext message body with the current Kerberos session key using IOV settings for WinRM
+
+    @param context: The context object returned from L{authGSSClientInit}.
+    @param encrypted_data: The ciphertext message to be decrypted.
+    @param header: The GSSAPI message header containing the encryption parameters.
+    @return: The decrypted message text.
+    """
