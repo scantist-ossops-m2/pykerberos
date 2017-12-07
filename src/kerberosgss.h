@@ -66,3 +66,5 @@ int authenticate_gss_client_wrap(gss_client_state* state, const char* challenge,
 int authenticate_gss_server_init(const char* service, gss_server_state* state);
 int authenticate_gss_server_clean(gss_server_state *state);
 int authenticate_gss_server_step(gss_server_state *state, const char *challenge);
+int encrypt_message(gss_client_state *state, char *message_input, char **header, int *header_len, char **encrypted_data, int *encrypted_data_len);
+int decrypt_message(gss_client_state *state, char *header, int header_len, char *data, int data_len, char **decrypted_output, int *decrypted_output_len);
