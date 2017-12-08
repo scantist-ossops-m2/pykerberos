@@ -585,6 +585,7 @@ static PyObject *authGSSServerTargetName(PyObject *self, PyObject *args) {
     return Py_BuildValue("s", state->targetname);
 }
 
+#ifdef GSSAPI_EXT
 static PyObject* authGSSWinRMEncryptMessage(PyObject* self, PyObject* args)
 {
     char *input = NULL;
@@ -713,6 +714,7 @@ end:
 
     return pyresult;
 }
+#endif
 
 static PyMethodDef KerberosMethods[] = {
     {"checkPassword",  checkPassword, METH_VARARGS,
@@ -721,10 +723,6 @@ static PyMethodDef KerberosMethods[] = {
      "Change the user password."},
     {"getServerPrincipalDetails",  getServerPrincipalDetails, METH_VARARGS,
      "Return the service principal for a given service and hostname."},
-    {"authGSSWinRMEncryptMessage",  authGSSWinRMEncryptMessage, METH_VARARGS,
-     "Encrypt a message"},
-    {"authGSSWinRMDecryptMessage",  authGSSWinRMDecryptMessage, METH_VARARGS,
-     "Decrypt a message"},
     {"authGSSClientInit",  (PyCFunction)authGSSClientInit, METH_VARARGS | METH_KEYWORDS,
      "Initialize client-side GSSAPI operations."},
     {"authGSSClientClean",  authGSSClientClean, METH_VARARGS,
@@ -750,6 +748,10 @@ static PyMethodDef KerberosMethods[] = {
      "Do a GSSAPI iov wrap."},
     {"authGSSClientUnwrapIov",  authGSSClientUnwrapIov, METH_VARARGS,
      "Do a GSSAPI iov unwrap."},
+    {"authGSSWinRMEncryptMessage",  authGSSWinRMEncryptMessage, METH_VARARGS,
+     "Encrypt a message"},
+    {"authGSSWinRMDecryptMessage",  authGSSWinRMDecryptMessage, METH_VARARGS,
+     "Decrypt a message"},
 #endif
     {"authGSSServerClean",  authGSSServerClean, METH_VARARGS,
      "Terminate server-side GSSAPI operations."},

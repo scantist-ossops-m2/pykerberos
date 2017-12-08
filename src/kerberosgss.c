@@ -841,6 +841,7 @@ static void set_gss_error(OM_uint32 err_maj, OM_uint32 err_min)
     PyErr_SetObject(GssException_class, Py_BuildValue("((s:i)(s:i))", buf_maj, err_maj, buf_min, err_min));
 }
 
+#ifdef GSSAPI_EXT
 int encrypt_message(gss_client_state *state, char *message_input, char **header, int *header_len, char **encrypted_data, int *encrypted_data_len)
 {
     OM_uint32 maj_stat;
@@ -920,3 +921,4 @@ int decrypt_message(gss_client_state *state, char *header, int header_len, char 
 end:
     return ret;
 }
+#endif
