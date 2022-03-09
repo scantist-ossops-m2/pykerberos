@@ -1,3 +1,8 @@
+v1.2.4 (9 Nov 2021)
+
+* Added C API change support for Python 3.10 (thanks @stevenpackardblp!)
+* Fixed a pointer alignment issue that impacted M1 Mac users (thanks @devashish2203!)
+
 v1.2.1 (20 Dec 2017)
 
 * Added support for passing channel binding tokens
